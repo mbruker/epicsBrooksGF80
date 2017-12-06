@@ -1,0 +1,45 @@
+record(stringin, "$(P)$(R)address")
+{
+	field (DTYP, "asynOctetRead")
+	field (INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))DEVICE_ADDRESS")
+	field (PINI, "YES")
+}
+
+record(ao, "$(P)$(R)pid_kp")
+{
+	field (DTYP, "asynFloat64")
+	field (OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))PID_KP")
+}
+record(ao, "$(P)$(R)pid_ki")
+{
+	field (DTYP, "asynFloat64")
+	field (OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))PID_KI")
+}
+record(ao, "$(P)$(R)pid_kd")
+{
+	field (DTYP, "asynFloat64")
+	field (OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))PID_KD")
+}
+
+record (ai, "$(P)$(R)flow-get")
+{
+	field (DTYP, "asynFloat64")
+	field (INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))GET_FLOW_RATE")
+	field (EGU, "L/min")
+}
+
+record(ao, "$(P)$(R)flow-set")
+{
+	field (DTYP, "asynFloat64")
+	field (OUT, "@asyn($(PORT),$(ADDR),$(TIMEOUT))FLOW_SETPOINT")
+	field (EGU, "L/min")
+}
+
+record(ai, "$(P)$(R)valve-get")
+{
+	field (DTYP, "asynFloat64")
+	field (INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))GET_VALVE_CONTROL")
+	field (EGU, "%")
+}
+
+

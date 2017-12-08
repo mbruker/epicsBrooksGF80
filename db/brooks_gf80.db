@@ -23,6 +23,7 @@ record(ao, "$(P)$(R)pid_kd")
 
 record (ai, "$(P)$(R)flow-get")
 {
+	field (SCAN, ".2 second")
 	field (DTYP, "asynFloat64")
 	field (INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))GET_FLOW_RATE")
 	field (EGU, "L/min")
@@ -37,6 +38,7 @@ record(ao, "$(P)$(R)flow-set")
 
 record(ai, "$(P)$(R)valve-get")
 {
+	field (SCAN, ".2 second")
 	field (DTYP, "asynFloat64")
 	field (INP, "@asyn($(PORT),$(ADDR),$(TIMEOUT))GET_VALVE_CONTROL")
 	field (EGU, "%")

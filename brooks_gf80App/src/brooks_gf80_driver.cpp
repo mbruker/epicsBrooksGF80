@@ -10,7 +10,7 @@
 #include <asynOctetSyncIO.h>
 #include <stdint.h>
 #include <string.h>
-
+#include <cantProceed.h>
 
 /*
     These two functions work on a Raspberry Pi but are architecture-dependent
@@ -57,17 +57,29 @@ BrooksGF80Driver::BrooksGF80Driver(const char *portName, const char *serialPortN
     asynStatus status;
     size_t replyBytes = 0;
     unsigned char replyData[24];
+    asynInterface *pasynInterface;
+    struct ioPvt *pioPvt;
     
     if (strlen(tagName) != 8) {
         printf("Error: tagName has to contain exactly 8 characters.\n");
         return;
     }
     
-    status = pasynOctetSyncIO->connect(serialPortName, 0, &asynUserSerial, "BrooksGF80");
+    pioPvt = (struct ioPvt *) callocMustSucceed(1, sizeof(struct ioPvt), "BrooksGF80");
+    asynUserSerial = pasynManager->createAsynUser(0, 0);
+    asynUserSerial->userPvt = pioPvt;
+    status = pasynManager->connectDevice(asynUserSerial, serialPortName, 0);
     if (status != asynSuccess) {
         printf("Cannot connect to port %s: %s\n", serialPortName, asynUserSerial->errorMessage);
         return;
     }
+    pasynInterface = pasynManager->findInterface(asynUserSerial, asynOctetType, 1);
+    if (!pasynInterface) {
+        printf("%s interface not supported\n", asynOctetType);
+        return;
+    }
+    pioPvt->pasynOctet = (asynOctet *) pasynInterface->pinterface;
+    pioPvt->octetPvt = pasynInterface->drvPvt;
 
     // get long address of device
     deviceAddress[0] = 0;
@@ -142,6 +154,7 @@ asynStatus BrooksGF80Driver::sendCommand(unsigned char commandId, unsigned char 
     size_t numBytes = 0;
     unsigned char message[50];
     unsigned char *pMessage = message;
+    struct ioPvt *pioPvt = (struct ioPvt *) asynUserSerial->userPvt;
 
     // preamble
     for (unsigned char i = 0; i < preambleBytes; ++i)
@@ -168,14 +181,17 @@ asynStatus BrooksGF80Driver::sendCommand(unsigned char commandId, unsigned char 
     // checksum byte
     *pMessage++ = calculateChecksum(message + preambleBytes, sendLen + 8);
 
+    // lock device until complete reply has been received
+    pasynManager->lockPort(asynUserSerial);
+
     // send message to device and read reply
-//    pasynManager->lockPort(asynUserSerial);
-    status = pasynOctetSyncIO->write(asynUserSerial, (char *) message, sendLen + 9 + preambleBytes, 2.0, &numBytes);
+    asynUserSerial->timeout = 1.0;
+    status = pioPvt->pasynOctet->write(pioPvt->octetPvt, asynUserSerial, (char *) message, sendLen + 9 + preambleBytes, &numBytes);
 
     do {
-        status = pasynOctetSyncIO->read(asynUserSerial, (char *) message, 1, 1.0, &numBytes, 0);
+        status = pioPvt->pasynOctet->read(pioPvt->octetPvt, asynUserSerial, (char *) message, 1, &numBytes, 0);
     } while (message[0] == 0xff);
-    status = pasynOctetSyncIO->read(asynUserSerial, (char *) message + 1, 7, 1.0, &numBytes, 0);
+    status = pioPvt->pasynOctet->read(pioPvt->octetPvt, asynUserSerial, (char *) message + 1, 7, &numBytes, 0);
     if (numBytes < 9) {
         // ...
     }
@@ -189,7 +205,7 @@ asynStatus BrooksGF80Driver::sendCommand(unsigned char commandId, unsigned char 
         *recvdLen = replyBytes - 2;
 
     // read the rest: two status bytes (included in byte count), all data bytes, one checksum byte (not included in byte count)
-    status = pasynOctetSyncIO->read(asynUserSerial, (char *) message + 8, replyBytes + 1, 1.0, &numBytes, 0);
+    status = pioPvt->pasynOctet->read(pioPvt->octetPvt, asynUserSerial, (char *) message + 8, replyBytes + 1, &numBytes, 0);
     if (numBytes < replyBytes + 1) {
         // ...
     }
@@ -203,8 +219,8 @@ asynStatus BrooksGF80Driver::sendCommand(unsigned char commandId, unsigned char 
     if (dataRecvd)
         for (unsigned int i = 0; i < *recvdLen; ++i)
             dataRecvd[i] = message[10 + i];
-        
-//    pasynManager->unlockPort(asynUserSerial);
+    
+    pasynManager->unlockPort(asynUserSerial);
 
     return status;
 }

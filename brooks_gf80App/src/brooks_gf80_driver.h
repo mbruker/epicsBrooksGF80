@@ -27,6 +27,10 @@ public:
     virtual asynStatus readFloat64(asynUser *pasynUser, epicsFloat64 *value);
     virtual asynStatus writeFloat64(asynUser *pasynUser, epicsFloat64 value);
 protected:
+    struct ioPvt {
+        asynOctet *pasynOctet;
+        void *octetPvt;
+    };
     float ieee754toFloat(unsigned char *number);
     void floatToIeee754(float number, unsigned char *result);
     unsigned char calculateChecksum(unsigned char *message, int len);
